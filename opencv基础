@@ -1,0 +1,575 @@
+jpg
+对图片的压缩，但是有损图片的压缩
+cv2.imwrite（）第一个参数是保存的路径及文件名，第二个是图像矩阵
+第三个参数针对特定的格式： 对于JPEG，其表示的是图像的质量，用0-100的整数表示，默认为95。 注意，cv2.IMWRITE_JPEG_QUALITY类型为Long，必须转换成int
+import cv2
+import random
+img = cv2.imread('5.jpg',1)
+#第三个参数描绘图片的质量,质量的范围是0-100
+cv2.imwrite('5_1.jpg',img,[cv2.IMWRITE_JPEG_QUALITY,0])
+
+
+png
+1.无损图片的压缩
+2.透明度属性
+对于PNG，第三个参数表示的是压缩级别。cv2.IMWRITE_PNG_COMPRESSION，从0到9,压缩级别越高，图像尺寸越小。默认级别为3
+img = cv2.imread('logo.jpg',1)
+cv2.imwrite('logo_1.png',img,[cv2.IMWRITE_PNG_COMPRESSION,0])
+
+
+img = cv2.imread('5.jpg',1)
+图片读取出来后是以元组的的形式返回
+
+像素的写入
+import cv2
+
+img = cv2.imread('5.jpg',1)
+b,g,r = img[100,100]
+for i in range(100):
+    img[10+i,100] = (255,0,0)
+cv2.imshow('image',img)
+cv2.waitKey(0)
+
+
+
+
+
+图片缩放
+最近临域插值
+src/原图像  10*20   dst/目标图片  5*10
+目标图像的每一个点都来自原图像   dst<-src
+目标图像上的点(1,2)可以用原图像上的(2,4)表示
+已知目标图像上的坐标，怎么原图像上的坐标
+img(x,y,z)=img(行，列，颜色)
+原图像上x = 目标图像x * (src 行/ dst 行)    newx = 1*(10/5)=2
+原图像上y = 目标图像y * (src 列/ dst 列)    newx = 1*(20/10)=2
+当结果为小数时，取最近的数  12.3=12
+import cv2
+import numpy as np
+
+img = cv2.imread("5.jpg",1)
+desheight = int(height*0.5)
+deswidth = int(width*0.5)
+#第一个参数是缩放的图片的数据,第二个参数时最终生成的宽度和高度的信息
+resize是通过opencv API调用的方法
+通过方法实现最近临域插值
+dst = cv2.resize(img,(deswidth,desheight))
+
+import cv2
+import numpy as np
+
+img = cv2.imread("5.jpg",1)
+imginfo = img.shape
+height = imginfo[0]
+width = imginfo[1]
+mode = imginfo[2]
+#空白模板
+dstimage = np.zeros((desheight,deswidth,3),np.uint8)
+'''
+这是通过自己写的原码来实现最近临域插值
+'''
+for i in range(0,desheight): #行
+    for j in range(0,deswidth):#列
+        inew = int(i*(height*1.0/desheight))
+        jnew = int(j*(width*1.0/deswidth))
+        dstimage[i,j] = img[inew,jnew]
+cv2.imshow('image',dstimage)
+cv2.waitKey(0)
+
+
+
+图片移位
+API原理
+[1,0,100],[0,1,200] 先将这个2*3拆分为2*2   2*1
+A = [[1,0],[0,1]]
+B = [[100],[200]]
+将输入的x,y定义为C
+一个2*2矩阵*一个2*1矩阵还是2*1
+一个2*1矩阵+一个2*1矩阵还是2*1
+A*C + B = [[1*x+0*y],[0*x+1*y]] + [[100],[200]] = [[1*x+100,],[1*y+200]]
+
+cv2.warpAffine()接受三个参数，需要变换的原始图像，移动矩阵M 以及变换的图像大小
+
+import cv2
+import numpy as np
+
+img = cv2.imread("5.jpg",1)
+imginfo = img.shape
+height = imginfo[0]
+width = imginfo[1]
+matShift = np.float32([[1,0,100],[0,1,200]])  #2*3 两行三列的矩阵
+#第一个参数原图片数据，第二个参数移位矩阵,第三个参数当前图片的宽度和高度
+dst = cv2.warpAffine(img,matShift,(height,width))
+cv2.imshow('da',img)
+cv2.imshow('dst',dst)
+cv2.waitKey(0)
+
+
+import cv2
+import numpy as np
+img = cv2.imread("logo.png",1)
+imginfo = img.shape
+height = imginfo[0]
+width = imginfo[1]
+dst = np.zeros(imginfo,np.uint8)
+for i in range(0,height-100):
+    for j in range(0,width-100):
+        dst[i+100,j] = img[i,j]
+cv2.imshow('dst',dst)
+cv2.imshow('dda',img)
+cv2.waitKey(0)
+
+
+
+
+图片缩放
+''
+定义一个2*3的矩阵      [[A1,A2,B1],[A3,A4,B2]]
+然后拆分为两个小矩阵   [[A1 A2],[A3,A4]]  [[B1],[B2]]
+newx = A1*x + A2*y +B1
+newY = A1*X + A2*y +B1
+
+'''
+import cv2
+import numpy as np
+
+img = cv2.imread('5.jpg',1)
+imginfo = img.shape
+height = imginfo[0]
+width = imginfo[1]
+#定义一个缩放矩阵
+matscale = np.float32([[0.5,0,0],[0,0.5,0]])
+dst = cv2.warpAffine(img,matscale,(int(width/2),int(height/2)))
+cv2.imshow('dst',dst)
+cv2.waitKey(0)
+图片镜像
+实现步骤:
+1.创建一个足够大的画板
+2.将一幅图像分别从前向后，从后向前绘制
+3.绘制中心分割线
+import cv2
+import numpy as np
+
+img = cv2.imread('3.jpg',1)
+imginfo = img.shape
+height = imginfo[0]
+width = imginfo[1]
+deep = imginfo[2]
+newimginfo = (height*2,width,deep)
+dst = np.zeros(newimginfo,np.uint8)
+for i in range(0,height):
+    for j in range(0,width):
+        dst[i,j] = img[i,j]
+        dst[height*2-i-1,j]= img[i,j]
+for i in range(0,width):
+    dst[height,i] = (0,0,255)#BGR
+cv2.imshow('dst',dst)
+cv2.waitKey(0)
+
+
+图像的仿射
+图像的旋转加上拉升就是图像仿射变换，仿射变化也是需要一个M矩阵就可以，但是由于仿射变换比较复杂，一般直接找很难找到这个矩阵，opencv提供了根据变换前后三个点的对应关系来自动求解M。这个函数是
+M=cv2.getAffineTransform(pos1,pos2),其中两个位置就是变换前后的对应位置关系。输 出的就是仿射矩阵M。然后在使用函数cv2.warpAffine()。形象化的图如下
+
+import cv2
+import numpy as np
+
+img = cv2.imread("5.jpg",1)
+imginfo = img.shape
+height = imginfo[0]
+width = imginfo[1]
+#仿射变换就是把原图片位置上的3个点映射到新的3个点上   对于原图片这3个位置位于(左上角，左下角，右上角)
+#matsrc描述的是原图片上的三个点
+matsrc = np.float32([[0,0],[0,height-1],[width-1,0]])
+#matdst描述的是原图片上的三个点在新的图片上的三个位置
+matdst = np.float32([[50,50],[400,height-100],[width-300,100]])
+#把两个矩阵组合起来
+mataffine = cv2.getAffineTransform(matsrc,matdst) #获取到是一个矩阵组合
+dst = cv2.warpAffine(img, mataffine,(width,height))
+cv2.imshow('dst',dst)
+cv2.waitKey(0)
+
+
+
+
+
+图像的旋转
+图像的旋转矩阵一般为： 
+M=[cos(θ)sin(θ)−sin(θ)cos(θ)]
+
+但是单纯的这个矩阵是在原点处进行变换的，为了能够在任意位置进行旋转变换，opencv采用了另一种方式： 
+M=[α−β−βα(1−α)centerx−βcenteryβcenterx+(1−α)centery]
+
+为了构造这个矩阵，opencv提供了一个函数： 
+cv2.getRotationMatrix2D()，这个函数需要三个参数，旋转中心，旋转角度，旋转后图像的缩放比例
+import cv2
+import numpy as np
+
+img = cv2.imread("5.jpg",1)
+imginfo = img.shape
+height = imginfo[0]
+width = imginfo[1]
+'''
+首先定义一个旋转矩阵
+然后把这个矩阵进行初始化
+'''
+#getRotationMatrix2D()得到的是一个旋转矩阵，
+# 第一个参数描绘的是旋转的中心点，第二个参数描绘的是旋转的角度，第三个参数描绘是缩放的系数
+#(height*0.5,width*0.5)这种点就是描绘图片的中心位置
+matrotate = cv2.getRotationMatrix2D((height*0.5,width*0.5),45,0.3)
+dst = cv2.warpAffine(img,matrotate,(height,width))
+cv2.imshow('dst',dst)
+cv2.waitKey(0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+灰度处理
+转灰方法一  imread()第二个参数为1是彩色图像,为0是灰色图像
+# img = cv2.imread('5.jpg',1)
+# img1 = cv2.imread('5.jpg',0)
+
+转灰方法二 cvtColor
+img = cv2.imread('5.jpg')
+#cvtColor()完成颜色空间的转换
+#第一个参数描绘的是图片的原始数据，第一个参数免得的是颜色转换的方式
+dst = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #这种是BGR模式转化为GRAY模式
+
+方法三 (r+b+g)/3
+当R=B=G时，就为灰色图像gray
+
+img = cv2.imread('5.jpg',1)
+imginfo = img.shape
+height = imginfo[0]
+width = imginfo[1]
+dst = np.zeros((height,width,3),np.uint8)
+for i in range(0,height):
+    for j in range(0,width):
+        #首先把原始图像的b,g,r读取出来
+        (b,g,r) = img[i,j]
+        gray = (int(b)+int(g)+int(r))/3
+        dst[i,j] = np.uint8(gray)
+cv2.imshow('da',dst)
+cv2.waitKey(0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+图片的颜色反转
+灰色图片的颜色反转
+0-255   255减去当前灰度值
+img = cv2.imread('5.jpg',1)
+imginfo = img.shape
+height = imginfo[0]
+width = imginfo[1]
+gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+dst = np.zeros((height,width,1),np.uint8)
+for i in range(0,height):
+    for j in range(0,width):
+        #定义一个像素，是每个像素的灰度值
+        grayPixel = gray[i,j]
+        #把当前图片进行处理，放在一个新的位置
+        dst[i,j] = 255-grayPixel
+cv2.imshow('da',dst)
+cv2.waitKey(0)
+
+彩色图片的颜色反转
+RGB   255-R=newR
+img = cv2.imread('5.jpg',1)
+imginfo = img.shape
+height = imginfo[0]
+width = imginfo[1]
+dst = np.zeros((height,width,3),np.uint8)
+for i in range(0,height):
+    for j in range(0,width):
+        #定义一个像素，是每个像素的灰度值
+        (b,g,r) = img[i,j]
+        #把当前图片进行处理，放在一个新的位置
+        dst[i,j] = (255-b,255-g,255-r)
+cv2.imshow('da',dst)
+cv2.waitKey(0)
+
+
+
+
+
+
+
+
+
+马赛克效果
+import cv2
+import numpy as np
+
+img = cv2.imread('5.jpg',1)
+imginfo = img.shape
+height = imginfo[0]
+width = imginfo[1]
+for m in range(300,400):
+    for n in range(300,400):
+        # 选中一个元素来替换掉10*10中所有像素点
+        #每10个像素点取一个像素
+        if m%10 == 0 and n%10 ==0:
+            #将这个矩形框中所有10*10的像素点填充
+            for i in range(0,10):
+                for j in range(0,10):
+                    (b,g,r) = img[m,n]
+                    img[i+m,j+n] = (b,g,r)
+cv2.imshow('da',img)
+cv2.waitKey(0)
+
+
+
+
+
+
+
+
+
+
+毛玻璃效果
+import cv2
+import numpy as np
+from numpy import random
+
+img = cv2.imread('5.jpg',1)
+imginfo = img.shape
+height = imginfo[0]
+width = imginfo[1]
+dst = np.zeros((height,width,3),np.uint8)
+mm = 8
+for m in range(0,height-mm):
+    for n in range(0,width-mm):
+        index = int(random.random()*8)
+        (b,g,r) = img[m+index,n+index]
+        dst[m,n] = (b,g,r)
+cv2.imshow('da',dst)
+cv2.waitKey(0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+图片融合
+import cv2
+import numpy as np
+from numpy import random
+
+img = cv2.imread('m.jpg',1)
+imginfo = img.shape
+height = imginfo[0]
+width = imginfo[1]
+mode = imginfo[2]
+desheight = int(height*0.5)
+deswidth = int(width*0.5)
+dst = cv2.resize(img,(deswidth,desheight))
+img1 = cv2.imread('l.jpg',1)
+imginfo = dst.shape
+height = imginfo[0]
+width = imginfo[1]
+# roiH = int(height/2)
+# roiW = int(width/2)
+# imgROI = img[0:roiH,0:roiW]
+# img1ROI = img1[0:roiH,0:roiW]
+imgROI = img[0:500,0:400]
+img1ROI = img1[0:500,0:400]
+dst = np.zeros((500,500,3),np.uint8)
+#addWeighted()相当于两张图片的权重相加
+#第一个参数为src1,第二个参数为src1对于的权重，第三个参数为src2,第四个参数为1-src1对于的权重
+#dst = src1*(a权重) +src2*(1-a权重)
+dst = cv2.addWeighted(imgROI,0.5,img1ROI,0.5,0)
+cv2.imshow('da',dst)
+cv2.waitKey(0)
+
+
+
+
+
+
+
+
+
+
+
+计算并显示直方图
+cv2.calcHist(images, channels, mask, histSize, ranges[, hist[, accumulate ]]) #返回hist
+·  hist = cv2.calcHist([image],
+·  ·      [0], #使用的通道
+·  ·      None, #没有使用mask
+·  ·      [256], #HistSize
+·  ·      [0.0,255.0]) #直方图柱的范围
+·  
+其中第一个参数必须用方括号括起来。
+第二个参数是用于计算直方图的通道，这里使用灰度图计算直方图，所以就直接使用第一个通道；
+第三个参数是Mask，这里没有使用，所以用None。
+第四个参数是histSize，表示这个直方图分成多少份（即多少个直方柱）。
+第五个参数是表示直方图中各个像素的值，[0.0, 256.0]表示直方图能表示像素值从0.0到256的像素。
+最后是两个可选参数，由于直方图作为函数结果返回了，所以第六个hist就没有意义了（待确定）
+最后一个accumulate是一个布尔值，用来表示直方图是否叠加
+import cv2
+import numpy as np
+
+def imageist(image,type):
+    color = (255,255,255)
+    windowName  = 'Gray'
+    if type == 31:
+        color = (255,0,0)
+        windowName = 'R Hist'
+    if type == 32:
+        color = (0,255,0)
+        windowName = 'G Hist'
+    if type == 33:
+        color = (0,0,255)
+    #完成对直方图的统计
+    #1图片数据 2直方图的通道，一种颜色一个通道 3model 4直方图的大小   5:0-255所有像素遍历
+    hist = cv2.calcHist([image],[0],None,[256],[0.0,255.0])
+    minV,maxV,minL,maxL = cv2.minMaxLoc(hist)
+    histimage = np.zeros([256,256,3],np.uint8)
+    for h in range(256):
+        intennormal = int(hist[h]*256/maxV)
+        cv2.line(histimage,(h,256),(h,256-intennormal),color)
+    cv2.imshow(windowName,histimage)
+    return histimage
+img = cv2.imread('5.jpg',1)
+#将图片的RGB分割为'r''g''b'
+channels = cv2.split(img)
+for i in range(0,3):
+    imageist(channels[i],31+i)
+cv2.waitKey(0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+直方图均衡化
+
+图像的直方图是对图像对比度效果上的一种处理，旨在使得图像整体效果均匀，黑与白之间的各个像素级之间的点更均匀一点。 
+
+通过这种方法，亮度可以更好地在直方图上分布。这样就可以用于增强局部的对比度而不影响整体的对比度，直方图均衡化通过有效地扩展常用的亮度来实现这种功能。
+
+这种方法对于背景和前景都太亮或者太暗的图像非常有用，这种方法尤其是可以带来X光图像中更好的骨骼结构显示以及曝光过度或者曝光不足照片中更好的细节。
+
+①实现方法
+
+利用
+
+cv2.equalizeHist(img)，将要均衡化的原图像【要求是灰度图像】作为参数传入，则返回值即为均衡化后的图像。
+灰色图片均衡化
+
+img = cv2.imread('6.jpg',1)
+gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+cv2.imshow('img',img)
+dst = cv2.equalizeHist(gray)
+cv2.imshow('dst',dst)
+cv2.waitKey(0)
+
+彩色图片均衡化
+会使原图片的颜色发生一定的变化
+
+img = cv2.imread('6.jpg',1)
+cv2.imshow('img',img)
+#要实现图片均衡化，必须返回单通道
+#通道的分解
+(b,g,r) = cv2.split(img)
+bH = cv2.equalizeHist(b)
+gH = cv2.equalizeHist(g)
+rH = cv2.equalizeHist(r)
+#完成通道的合成
+result = cv2.merge((bH,gH,rH))
+cv2.imshow('dst',result)
+cv2.waitKey(0)
+
+YUV 直方图均衡化
+img = cv2.imread('6.jpg',1)
+imgYUV = cv2.cvtColor(img,cv2.COLOR_BGR2YCrCb)
+cv2.imshow('img',img)
+channelYUV = cv2.split(imgYUV)
+channelYUV[0] = cv2.equalizeHist(channelYUV[0])
+channels = cv2.merge(channelYUV)
+#将channels再转成BGR图片
+result = cv2.cvtColor(channels,cv2.COLOR_YCrCb2BGR)
+cv2.imshow('dst',result)
+cv2.waitKey(0)
+
+
+
+
+
+
+
+
